@@ -8,6 +8,10 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'price-history-service' });
+});
+
 // GET /api/candles?ticker=AAPL
 app.get('/api/candles', async (req, res) => {
   const { ticker } = req.query;
@@ -16,7 +20,7 @@ app.get('/api/candles', async (req, res) => {
   try {
     const { rows } = await query(
       'SELECT time, open, high, low, close FROM candles WHERE ticker = $1 ORDER BY time ASC',
-      [ticker],
+      [String(ticker).toUpperCase()],
     );
     res.json(rows);
   } catch (err) {
@@ -25,11 +29,12 @@ app.get('/api/candles', async (req, res) => {
   }
 });
 
-// PUT /api/candles  — upsert a single candle
+// PUT /api/candles - upsert a single candle
 app.put('/api/candles', async (req, res) => {
   const { ticker, time, open, high, low, close } = req.body ?? {};
-  if (!ticker || time == null || open == null || high == null || low == null || close == null)
+  if (!ticker || time == null || open == null || high == null || low == null || close == null) {
     return res.status(400).json({ error: 'missing fields' });
+  }
 
   try {
     await query(
@@ -37,7 +42,7 @@ app.put('/api/candles', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (ticker, time)
        DO UPDATE SET open = $3, high = $4, low = $5, close = $6`,
-      [ticker, time, open, high, low, close],
+      [String(ticker).toUpperCase(), time, open, high, low, close],
     );
     res.json({ ok: true });
   } catch (err) {
@@ -47,4 +52,4 @@ app.put('/api/candles', async (req, res) => {
 });
 
 await initDb();
-app.listen(PORT, () => console.log(`Backend on :${PORT}`));
+app.listen(PORT, () => console.log(`Price history service on :${PORT}`));
