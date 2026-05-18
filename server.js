@@ -4,6 +4,7 @@ import { query, initDb } from './db.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN;
 const RANGE_SECONDS = {
   '1d': 24 * 60 * 60,
   '1w': 7 * 24 * 60 * 60,
@@ -55,8 +56,11 @@ app.get('/api/candles', async (req, res) => {
   }
 });
 
-// PUT /api/candles - upsert a single candle
+// PUT /api/candles - upsert a single candle (internal only)
 app.put('/api/candles', async (req, res) => {
+  if (!INTERNAL_SERVICE_TOKEN || req.headers['x-internal-token'] !== INTERNAL_SERVICE_TOKEN) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
   const { ticker, time, open, high, low, close } = req.body ?? {};
   if (!ticker || time == null || open == null || high == null || low == null || close == null) {
     return res.status(400).json({ error: 'missing fields' });
